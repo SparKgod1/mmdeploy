@@ -9,3 +9,22 @@ python ./tools/deploy.py `
     --log-level INFO `
     --show `
     --dump-info
+
+
+
+{
+    "type": "Task",
+    "module": "mmdet",
+    "name": "postprocess",
+    "component": "ResizeInstanceMask",
+    "params": {
+        "is_resize_mask": true
+    },
+    "output": [
+        "post_output"
+    ], 
+    "input": [
+        "prep_output",
+        "infer_output"
+    ]
+}
