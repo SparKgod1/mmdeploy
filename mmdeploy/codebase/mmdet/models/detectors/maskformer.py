@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch
 
-from mmdeploy.core import FUNCTION_REWRITER
+from mmdeploy.core import FUNCTION_REWRITER, mark
 from mmdeploy.utils import is_dynamic_shape
 
 
@@ -51,4 +51,25 @@ def maskformer__forward(self,
     mask_cls_results, mask_pred_results = self.panoptic_head.predict(
         feats, data_samples)
     # do not export panoptic_fusion_head
-    return mask_cls_results, mask_pred_results
+    # return mask_cls_results, mask_pred_results, torch.tensor(img_shape)
+    results_list = self.panoptic_fusion_head.predict(
+        mask_cls_results,
+        mask_pred_results,
+        data_samples,
+        rescale=True)
+    batch_dets = torch.zeros(len(results_list), 100, 5, dtype=torch.float32)
+    batch_labels = torch.zeros(len(results_list), 100, dtype=torch.int64)
+    batch_masks = torch.zeros(len(results_list), 100, 768, 1024, dtype=torch.float32)
+
+    for i, result in enumerate(results_list):
+        ins_results = result['ins_results']
+        bboxes = ins_results['bboxes']
+        labels = ins_results['labels']
+        scores = ins_results['scores']
+        masks = ins_results['masks']
+        batch_dets[i, :bboxes.size(0), :bboxes.size(1)] = bboxes
+        batch_dets[i, :scores.size(0), -1] = scores.view(-1)
+        batch_labels[i, :labels.size(0)] = labels
+        batch_masks[i, :masks.size(0), :masks.size(1)] = masks.to(torch.float32)
+    return batch_dets, batch_labels, batch_masks
+

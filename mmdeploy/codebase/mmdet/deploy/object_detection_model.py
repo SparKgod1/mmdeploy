@@ -408,14 +408,48 @@ class PanOpticEnd2EndModel(End2EndModel):
                                                       seg_pred_list)
             results_list = [dict(pan_results=res) for res in semseg_results]
         elif model_type in ['MaskFormer', 'Mask2Former']:
-            batch_cls_logits = outputs[0]
-            batch_mask_logits = outputs[1]
-
-            results_list = self.fusion_head.predict(
-                batch_cls_logits,
-                batch_mask_logits,
-                data_samples,
-                rescale=rescale)
+            # batch_cls_logits = outputs[0]
+            # batch_mask_logits = outputs[1]
+            #
+            # results_list = self.fusion_head.predict(
+            #     batch_cls_logits,
+            #     batch_mask_logits,
+            #     data_samples,
+            #     rescale=rescale)
+            dets = outputs[0]
+            labels = outputs[1]
+            masks = outputs[2]
+            import cv2
+            img = cv2.imread(r"D:\project\SEG DATA\EHY\9_CCD3.1_\9_CCD3.1_resized (2).jpg")
+            color_mask = np.zeros_like(img)
+            color_mask[:, :, 2] = 255
+            goodmask = []
+            gooddet = []
+            for det, label, mask in zip(dets[0], labels[0], masks[0]):
+                if det[4] > 0.5:
+                    mask = mask.cpu().numpy()
+                    masked_img = img.copy()
+                    masked_img[mask] = np.array([255, 0, 0])
+                    goodmask.append(mask)
+                    gooddet.append(det)
+                    cv2.imshow('', masked_img)
+                    cv2.waitKey(0)
+            # goodmask = torch.tensor(goodmask)
+            # from mmdet.structures.mask import mask2bbox
+            # boxes = mask2bbox(goodmask)
+            # img1 = img.copy()
+            # for box in boxes:
+            #     box = box.cpu().numpy().astype(int)
+            #     cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+            # cv2.imshow('', img1)
+            # cv2.waitKey(0)
+            gooddet = torch.stack(gooddet)
+            img2 = img.copy()
+            for box in gooddet:
+                box = box.cpu().numpy().astype(int)
+                cv2.rectangle(img2, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+            cv2.imshow('', img2)
+            cv2.waitKey(0)
 
         data_samples = self.add_pred_to_datasample(data_samples, results_list)
         return data_samples
