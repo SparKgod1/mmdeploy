@@ -71,6 +71,9 @@ def visualize_model(model_cfg: Union[str, mmengine.Config],
     with torch.no_grad():
         result = model.test_step(model_inputs)[0]
 
+    # for cls onnx test
+    # return result
+
     if show_result:
         try:
             # check headless
